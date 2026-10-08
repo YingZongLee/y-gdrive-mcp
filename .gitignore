@@ -1,0 +1,10 @@
+# Python / uv
+.venv/
+__pycache__/
+*.pyc
+uv.lock
+
+# 環境變數與金鑰（絕對不能提交）
+.env
+*.json
+!example*.json

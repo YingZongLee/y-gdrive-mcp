@@ -1,0 +1,17 @@
+# FastMCP 官方建議使用 uv 管理專案
+# 安裝依賴：uv sync（會依此檔案建立 .venv）
+[project]
+name = "y-gdrive-mcp"
+version = "0.1.0"
+description = "FastMCP server：以 service account 操作 Google Drive「AI Workflow」資料夾"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastmcp>=2.0",
+    "google-api-python-client>=2.0",
+    "google-auth>=2.0",
+]
+
+# 允許用 `uv run y-gdrive-mcp` 直接啟動 server
+[project.scripts]
+y-gdrive-mcp = "server:main"
