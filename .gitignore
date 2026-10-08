@@ -8,3 +8,6 @@ uv.lock
 .env
 *.json
 !example*.json
+
+# macOS 系統檔案
+.DS_Store

@@ -64,6 +64,23 @@ Server 使用 **stdio transport**，由 MCP client 啟動並透過標準輸入�
 | `list_files` | 列出目標資料夾內的檔案（id、name、mimeType、modifiedTime） |
 | `create_presentation` | 在資料夾中建立空白 Google Slides 簡報，回傳 id 與網址 |
 
+### Service account 的權限與限制
+
+- `list_files` 使用 `drive.metadata.readonly` 讀取 service account 有權存取的既有檔案中繼資料；僅有 `drive.file` 不足以涵蓋所有手動分享的檔案。此新增 scope 不授予檔案內容的讀寫權限。
+- 列檔查詢仍限定 `GDRIVE_FOLDER_ID`，會讀取所有分頁，但不遞迴列出子資料夾內容。scope 本身不是單一資料夾的權限邊界，請僅分享必要資料給 service account。
+- 修改 scope 後，請在 MCP client 停止並重新啟動此 server，讓新的憑證設定生效。不需要重新下載 JSON 金鑰。
+- 如果仍回傳空清單，請確認資料夾 ID 正確、資料夾直接包含未刪除的檔案，且資料夾與檔案的分享權限允許 service account 存取。
+- **個人 My Drive 建立檔案的限制**：將資料夾分享給 service account，不會讓新檔案使用資料夾擁有者的配額。service account 沒有一般使用者的 Drive 儲存配額，建立簡報可能回報 `403 storageQuotaExceeded`；這不代表你的個人 Drive 已滿。本階段保留原有建立工具，但新增列檔 scope 不會解決此限制。
+- 要在個人 My Drive 建立新檔案，需另行改用使用者 OAuth；若保留 service account，可另行擴充支援 Workspace 共用雲端硬碟（Shared drive），它與一般分享資料夾不同。
+
+參考：[Google Drive scopes](https://developers.google.com/workspace/drive/api/guides/api-specific-auth)、[檔案擁有權](https://developers.google.com/workspace/drive/api/guides/create-file#file_ownership)。
+
+### 不使用金鑰的列檔測試
+
+```bash
+uv run python -m unittest discover -s tests
+```
+
 ## 下一步可擴充的工具
 
 - `add_slide`：在簡報中新增投影片（Slides API `presentations.batchUpdate`）

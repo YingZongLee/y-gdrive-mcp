@@ -24,8 +24,12 @@ from googleapiclient.discovery import build
 SA_KEY_PATH = os.environ.get("GOOGLE_SA_KEY_PATH", "")
 FOLDER_ID = os.environ.get("GDRIVE_FOLDER_ID", "")
 
-# 需要的 OAuth scope：Drive 檔案層級存取（service account 只看得到分享給它的檔案）
-SCOPES = ["https://www.googleapis.com/auth/drive.file"]
+# drive.file 不涵蓋所有手動分享的既有檔案；metadata.readonly 讓列檔能讀取
+# service account 有權存取的檔案中繼資料，不授予檔案內容的讀寫權限。
+SCOPES = [
+    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/drive.metadata.readonly",
+]
 
 # 建立 MCP server 實例，名稱會顯示在 MCP client 上
 mcp = FastMCP("y-gdrive-mcp")
@@ -54,24 +58,33 @@ def _drive_service():
 # ---------------------------------------------------------------------------
 @mcp.tool
 def list_files() -> list[dict]:
-    """列出目標資料夾（AI Workflow）內的所有檔案。
+    """列出目標資料夾（AI Workflow）直接包含的所有未刪除檔案。
 
     回傳每個檔案的 id、name、mimeType、modifiedTime。
     """
     drive = _drive_service()
     # Drive API 的查詢語法：parents 限定資料夾，trashed=false 排除垃圾桶
-    query = f"'{FOLDER_ID}' in parents and trashed = false"
-    results = (
-        drive.files()
-        .list(
-            q=query,
-            fields="files(id,name,mimeType,modifiedTime)",
-            orderBy="modifiedTime desc",
-            pageSize=100,
+    folder_id = FOLDER_ID.replace("\\", "\\\\").replace("'", "\\'")
+    query = f"'{folder_id}' in parents and trashed = false"
+    files: list[dict] = []
+    page_token: str | None = None
+    # Drive 每次只回傳一頁；持續讀取 nextPageToken 才不會漏列檔案。
+    while True:
+        results = (
+            drive.files()
+            .list(
+                q=query,
+                fields="nextPageToken,files(id,name,mimeType,modifiedTime)",
+                orderBy="modifiedTime desc",
+                pageSize=100,
+                pageToken=page_token,
+            )
+            .execute()
         )
-        .execute()
-    )
-    return results.get("files", [])
+        files.extend(results.get("files", []))
+        page_token = results.get("nextPageToken")
+        if not page_token:
+            return files
 
 
 @mcp.tool
